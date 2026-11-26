@@ -17,6 +17,7 @@
     th, td { text-align: left; padding: 6px 0; border-bottom: 1px solid #d6dde5; }
     td:last-child, th:last-child { text-align: right; }
     button { font: inherit; padding: 8px 14px; border: 1px solid #1f5f8b; background: #1f5f8b; color: #fff; border-radius: 6px; cursor: pointer; }
+    button:disabled { opacity: 0.65; cursor: wait; }
     #statistics-status { min-height: 1.4em; margin-top: 12px; color: #2f7d4f; }
     #statistics-status.error { color: #b3261e; }
   </style>
@@ -24,7 +25,7 @@
 <body>
 <main>
   <h1>Task Statistics</h1>
-  <p class="author">Implemented by student ID: <strong id="student-id">79822</strong></p>
+  <p class="author">Implemented by student ID: <strong id="student-id">79841</strong></p>
   <p><a href="index.html">&larr; Back to Task Manager</a></p>
 
   <button type="button" id="refresh-statistics">Refresh Statistics</button>
@@ -49,7 +50,6 @@
 </main>
 
 <script>
-  // Statistics are calculated from live data fetched through the Supabase REST API.
   const $ = (id) => document.getElementById(id);
 
   async function getConfig() {
@@ -58,27 +58,33 @@
     return response.json();
   }
 
-  async function get(config, path) {
+  async function fetchRest(config, path) {
     const base = config.supabaseUrl.replace(/\/+$/, "") + "/rest/v1";
-    const response = await fetch(base + path, { headers: { apikey: config.supabasePublishableKey } });
+    const headers = { apikey: config.supabasePublishableKey };
+    if (!config.supabasePublishableKey.startsWith("sb_publishable_")) {
+      headers.Authorization = "Bearer " + config.supabasePublishableKey;
+    }
+    const response = await fetch(base + path, { headers });
     if (!response.ok) throw new Error("GET " + path + " failed (HTTP " + response.status + ").");
     return response.json();
   }
 
   async function loadStatistics() {
+    const button = $("refresh-statistics");
     const status = $("statistics-status");
+    button.disabled = true;
     status.classList.remove("error");
-    status.textContent = "Loading...";
+    status.textContent = "Loading statistics...";
+
     try {
       const config = await getConfig();
-      // GET /tasks?select=id,completed,category_id   and   GET /categories?select=*
       const [tasks, categories] = await Promise.all([
-        get(config, "/tasks?select=id,completed,category_id"),
-        get(config, "/categories?select=*&order=id.asc"),
+        fetchRest(config, "/tasks?select=id,completed,category_id"),
+        fetchRest(config, "/categories?select=*&order=id.asc"),
       ]);
 
       const total = tasks.length;
-      const completed = tasks.filter((t) => t.completed).length;
+      const completed = tasks.filter((task) => task.completed).length;
       const incomplete = total - completed;
       const percentage = total === 0 ? 0 : (completed / total) * 100;
 
@@ -89,21 +95,35 @@
 
       const body = $("category-stats");
       body.innerHTML = "";
+
       categories.forEach((category) => {
-        const count = tasks.filter((t) => t.category_id === category.id).length;
+        const count = tasks.filter((task) => task.category_id === category.id).length;
         const tr = document.createElement("tr");
-        const name = document.createElement("td");
-        name.textContent = category.name;
-        const value = document.createElement("td");
-        value.textContent = count;
-        tr.append(name, value);
+        const nameCell = document.createElement("td");
+        nameCell.textContent = category.name;
+        const countCell = document.createElement("td");
+        countCell.textContent = count;
+        tr.append(nameCell, countCell);
         body.appendChild(tr);
       });
+
+      const uncategorized = tasks.filter((task) => task.category_id === null || task.category_id === undefined).length;
+      if (uncategorized > 0) {
+        const tr = document.createElement("tr");
+        const nameCell = document.createElement("td");
+        nameCell.textContent = "Uncategorized";
+        const countCell = document.createElement("td");
+        countCell.textContent = uncategorized;
+        tr.append(nameCell, countCell);
+        body.appendChild(tr);
+      }
 
       status.textContent = "Updated " + new Date().toLocaleTimeString();
     } catch (error) {
       status.classList.add("error");
       status.textContent = error.message;
+    } finally {
+      button.disabled = false;
     }
   }
 
