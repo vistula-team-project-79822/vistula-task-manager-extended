@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Task Statistics</title>
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; background: #f6f8fa; color: #1d2733; }
+    main { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { margin: 0 0 4px; font-size: 1.6rem; }
+    .author { color: #5b6878; margin: 0 0 16px; }
+    section { background: #fff; border: 1px solid #d6dde5; border-radius: 8px; padding: 16px; margin-top: 16px; }
+    dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; }
+    dt { color: #5b6878; }
+    dd { margin: 0; font-weight: 700; text-align: right; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 6px 0; border-bottom: 1px solid #d6dde5; }
+    td:last-child, th:last-child { text-align: right; }
+    button { font: inherit; padding: 8px 14px; border: 1px solid #1f5f8b; background: #1f5f8b; color: #fff; border-radius: 6px; cursor: pointer; }
+    #statistics-status { min-height: 1.4em; margin-top: 12px; color: #2f7d4f; }
+    #statistics-status.error { color: #b3261e; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Task Statistics</h1>
+  <p class="author">Implemented by student ID: <strong id="student-id">79822</strong></p>
+  <p><a href="index.html">&larr; Back to Task Manager</a></p>
+
+  <button type="button" id="refresh-statistics">Refresh Statistics</button>
+  <p id="statistics-status" role="status"></p>
+
+  <section>
+    <dl>
+      <dt>Total tasks</dt><dd id="total-tasks">-</dd>
+      <dt>Completed tasks</dt><dd id="completed-tasks">-</dd>
+      <dt>Incomplete tasks</dt><dd id="incomplete-tasks">-</dd>
+      <dt>Completed (%)</dt><dd id="completed-percentage">-</dd>
+    </dl>
+  </section>
+
+  <section>
+    <h2>Tasks per category</h2>
+    <table>
+      <thead><tr><th>Category</th><th>Tasks</th></tr></thead>
+      <tbody id="category-stats"></tbody>
+    </table>
+  </section>
+</main>
+
+<script>
+  // Statistics are calculated from live data fetched through the Supabase REST API.
+  const $ = (id) => document.getElementById(id);
+
+  async function getConfig() {
+    const response = await fetch("config.json", { cache: "no-store" });
+    if (!response.ok) throw new Error("Could not load config.json (HTTP " + response.status + ").");
+    return response.json();
+  }
+
+  async function get(config, path) {
+    const base = config.supabaseUrl.replace(/\/+$/, "") + "/rest/v1";
+    const response = await fetch(base + path, { headers: { apikey: config.supabasePublishableKey } });
+    if (!response.ok) throw new Error("GET " + path + " failed (HTTP " + response.status + ").");
+    return response.json();
+  }
+
+  async function loadStatistics() {
+    const status = $("statistics-status");
+    status.classList.remove("error");
+    status.textContent = "Loading...";
+    try {
+      const config = await getConfig();
+      // GET /tasks?select=id,completed,category_id   and   GET /categories?select=*
+      const [tasks, categories] = await Promise.all([
+        get(config, "/tasks?select=id,completed,category_id"),
+        get(config, "/categories?select=*&order=id.asc"),
+      ]);
+
+      const total = tasks.length;
+      const completed = tasks.filter((t) => t.completed).length;
+      const incomplete = total - completed;
+      const percentage = total === 0 ? 0 : (completed / total) * 100;
+
+      $("total-tasks").textContent = total;
+      $("completed-tasks").textContent = completed;
+      $("incomplete-tasks").textContent = incomplete;
+      $("completed-percentage").textContent = percentage.toFixed(1) + "%";
+
+      const body = $("category-stats");
+      body.innerHTML = "";
+      categories.forEach((category) => {
+        const count = tasks.filter((t) => t.category_id === category.id).length;
+        const tr = document.createElement("tr");
+        const name = document.createElement("td");
+        name.textContent = category.name;
+        const value = document.createElement("td");
+        value.textContent = count;
+        tr.append(name, value);
+        body.appendChild(tr);
+      });
+
+      status.textContent = "Updated " + new Date().toLocaleTimeString();
+    } catch (error) {
+      status.classList.add("error");
+      status.textContent = error.message;
+    }
+  }
+
+  $("refresh-statistics").addEventListener("click", loadStatistics);
+  loadStatistics();
+</script>
+</body>
+</html>

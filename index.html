@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Task Manager Extended</title>
+  <style>
+    :root {
+      --bg: #f6f8fa; --surface: #fff; --ink: #1d2733; --muted: #5b6878;
+      --line: #d6dde5; --accent: #1f5f8b; --done: #2f7d4f; --error: #b3261e;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--ink); }
+    main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+    header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+    h1 { margin: 0; font-size: 1.6rem; }
+    h2 { font-size: 1.1rem; margin: 0 0 12px; }
+    section { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-top: 16px; }
+    form { display: flex; flex-direction: column; gap: 10px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+    label { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; color: var(--muted); }
+    input[type=text], textarea, select { font: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: #fff; }
+    textarea { min-height: 60px; resize: vertical; }
+    button { font: inherit; padding: 8px 14px; border: 1px solid var(--accent); background: var(--accent); color: #fff; border-radius: 6px; cursor: pointer; }
+    button.secondary { background: #fff; color: var(--accent); }
+    button.danger { background: #fff; color: var(--error); border-color: var(--error); }
+    ul { list-style: none; margin: 0; padding: 0; }
+    li.task { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--line); }
+    li.task:first-child { border-top: 0; }
+    .task-body { flex: 1; min-width: 0; }
+    .task-title { font-weight: 600; word-break: break-word; }
+    .task-desc { color: var(--muted); font-size: .9rem; margin-top: 2px; word-break: break-word; }
+    .completed .task-title { text-decoration: line-through; color: var(--muted); }
+    .category-badge { display: inline-block; margin-top: 6px; padding: 2px 8px; font-size: .75rem; border-radius: 999px; background: #e4eef6; color: var(--accent); }
+    .actions { display: flex; gap: 6px; }
+    #status-message { min-height: 1.4em; margin-top: 12px; color: var(--done); }
+    #status-message.error { color: var(--error); }
+    .empty { color: var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Task Manager Extended</h1>
+    <nav><a id="statistics-link" href="statistics.html">Statistics</a></nav>
+  </header>
+
+  <p id="status-message" role="status"></p>
+
+  <section>
+    <h2>Categories</h2>
+    <form id="category-form" class="row">
+      <label>New category
+        <input type="text" id="category-name" required placeholder="e.g. Hobby">
+      </label>
+      <button type="submit">Add category</button>
+    </form>
+    <p id="category-list" class="empty"></p>
+  </section>
+
+  <section>
+    <h2 id="form-title">Add task</h2>
+    <form id="task-form">
+      <label>Title
+        <input type="text" id="task-title" required>
+      </label>
+      <label>Description (optional)
+        <textarea id="task-description"></textarea>
+      </label>
+      <label>Category
+        <select id="task-category" required></select>
+      </label>
+      <div class="row">
+        <button type="submit" id="task-submit">Add task</button>
+        <button type="button" id="task-cancel" class="secondary" hidden>Cancel</button>
+      </div>
+    </form>
+  </section>
+
+  <section>
+    <h2>Tasks</h2>
+    <div class="row">
+      <label>Category
+        <select id="filter-category"></select>
+      </label>
+      <label>Status
+        <select id="filter-status">
+          <option value="all">All</option>
+          <option value="incomplete">Incomplete</option>
+          <option value="completed">Completed</option>
+        </select>
+      </label>
+    </div>
+    <ul id="task-list"></ul>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
